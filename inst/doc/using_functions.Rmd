@@ -1,0 +1,126 @@
+---
+title: "Example application"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Example application}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+NOT_CRAN <- identical(tolower(Sys.getenv("NOT_CRAN")), "true")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = NOT_CRAN
+)
+```
+
+
+```{r download, echo=FALSE}
+if (!file.exists(tmpGridFile <- "~/ownCloudUva/test.nc")) {
+  tmpGridFile <- tempfile(fileext = ".nc")
+  download.file("https://surfdrive.surf.nl/files/index.php/s/XndqfCYJqkdjcFO/download", tmpGridFile, extra = "-q", method = "wget")
+}
+```
+
+In some cases it is desirable to calculate the tiles not from a fixed grid but rather dynamically. Example are external data sources such as databases or storage systems. Also in some cases you would like to be able to dynamically calculate derivatives from grids.
+
+This is a small example calculating wind speed on the fly from weather data on the fly. `starsTileServer` can do this as you can provide functions that calculate the grid on the fly. To do this there needs to be a function that takes a stars grid as the first argument and returns the same grid with values annotated. I have also added a function the determines the coloring of the grid.
+
+In this case the data is extracted form a stars proxy object (this means the function is slower compared to all data being present in memory, but means not all data needs to be loaded. U an V are wind speeds in north south and east west direction. Speed is calculated using Pythagorean theorem. Much more complicated function can be developed but this just gives an idea. This is the function we will use the weather data file we also use in the other vignette. This file can also be downloaded directly from here https://surfdrive.surf.nl/files/index.php/s/XndqfCYJqkdjcFO/download.
+```{r asfdf}
+windDirFun <- function(grd,
+                       level = c("875", "900", "925"),
+                       time = "2000-04-28 23:00:00") {
+  weather <- read_stars(options("tmpGridFile")[[1]], proxy = T)
+  st_crs(weather) <- 4326
+  bbox <- st_bbox(
+    st_transform(
+      st_as_sf(grd),
+      st_crs(weather)
+    )
+  )
+  levelDim <- which(as.character(st_get_dimension_values(weather, "level")) == level[1])
+  timeDim <- which(as.character(st_get_dimension_values(weather, "time")) == time[1])
+  u <-
+    abind::adrop(st_warp(st_crop(st_as_stars(
+      weather["u"] %>%
+        slice(level, levelDim) %>%
+        slice(time, timeDim)
+    ), bbox), grd))
+  v <-
+    abind::adrop(st_warp(st_crop(st_as_stars(
+      weather["v"] %>%
+        slice(level, levelDim) %>%
+        slice(time, timeDim)
+    ), bbox), grd))
+  return(sqrt(u^2 + v^2))
+}
+```
+
+We also create a color function to create a consistent color scale. 
+```{r asdf}
+
+colFun <- function(x, alpha = 1, maxColor = 25) {
+  cfun <- leaflet::colorNumeric("RdYlBu", domain = c(-as.numeric(maxColor), 0))
+  paste0(
+    suppressWarnings(cfun(-x)),
+    as.character(as.raw(as.numeric(alpha) * 255))
+  )
+}
+attr(colFun, "colorType") <- "numeric"
+```
+
+To run the server we will again use a separate process with `callr`.
+
+```{r setup}
+library(starsTileServer)
+require(callr)
+
+rp <- r_bg(args = list(tmpGridFile = tmpGridFile, windDirFun = windDirFun, colFun = colFun), function(tmpGridFile, windDirFun, colFun) {
+  require(sf)
+  require(stars)
+  require(dplyr)
+  options(tmpGridFile = tmpGridFile)
+  starsTileServer::starsTileServer$new(windDirFun,
+    colorFun = colFun
+  )$run(port = 5645, docs = T)
+})
+```
+```{r startupPause, echo=F}
+Sys.sleep(35)
+stopifnot(rp$is_alive())
+```
+
+The following url can be used to explore the tile server when it is running: `http://127.0.0.1:5645/__docs__/`
+
+Now we can plot a map, the url to the tiles here make it possible to select specific layers (e.g. the 900 mb level and the 2000-04-28 23:00:00 timestamp in this case).
+```{r plot_map}
+require(leaflet)
+require(leaflet.extras)
+require(magrittr)
+m <- leaflet() %>%
+  addTiles() %>%
+  enableTileCaching() %>%
+  addTiles(
+    "http://127.0.0.1:5645/map/{z}/{x}/{y}?level=900&alpha=.2&time=2000-04-28 23:00:00",
+    options = tileOptions(useCache = TRUE, crossOrigin = TRUE)
+  ) %>%
+  addLegend(pal = readRDS(url("http://127.0.0.1:5645/map/colorfunctionnoalpha")), values = 0:20) %>%
+  setView(zoom = 3, lat = 30, lng = 5)
+```
+
+```{r plot_map_image, echo=FALSE}
+f <- tempfile(fileext = ".png")
+mapview::mapshot(m, file = f, delay = 11, vwidth = 700, vheight = 600)
+magick::image_read(f)
+```
+
+Before finishing it is important to close the server that is running in a separate process.
+
+```{r remove_server}
+message(rp$read_error())
+message(rp$read_output())
+rp$finalize()
+```

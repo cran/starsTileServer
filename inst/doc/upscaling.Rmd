@@ -1,0 +1,130 @@
+---
+title: "Parallel tile rendering"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Parallel tile rendering}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+NOT_CRAN <- identical(tolower(Sys.getenv("NOT_CRAN")), "true")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = NOT_CRAN
+)
+```
+
+```{r download, echo=FALSE}
+if (!file.exists(tmpGridFile <- "~/ownCloudUva/test.nc")) {
+  tmpGridFile <- tempfile(fileext = ".nc")
+  download.file("https://surfdrive.surf.nl/files/index.php/s/XndqfCYJqkdjcFO/download", tmpGridFile, extra = "-q", method = "wget")
+}
+```
+
+## Introduction
+
+For some functionality one single core plumber instance might not be enough to achieve the performance that is desired. One way around this is to use some cluster orchestration tools. The example below discusses the usage of `docker-compose` but other tools like `docker swarm` or `kubernetes` should be able to achieve similar results. Alternatively local parallelization can be used.
+
+
+## Local parallelizing
+
+We first start two tile servers running on port `4001` and `4002`.
+
+```{r}
+require(callr)
+rp_list <- lapply(lapply(as.list(4000+1:2), c, list(tmpGridFile=tmpGridFile)), r_bg, func=function(port, tmpGridFile) {
+  # read a stars grid
+  weatherData <- stars::read_stars(tmpGridFile, proxy = FALSE, sub = "t")
+  names(weatherData) <- "t"
+  sf::st_crs(weatherData) <- "+proj=longlat"
+  colorFunction <- leaflet::colorNumeric("viridis", c(250, 310))
+  colorFunctionWithAlpa <- function(x, alpha = 1) {
+    paste0(colorFunction(x), as.character(as.raw(
+      as.numeric(alpha) * 255
+    )))
+  }
+  starsTileServer::starsTileServer$new(weatherData, colorFun = colorFunctionWithAlpa)$run(port = port)
+})
+
+
+```
+
+Now we can use the subdomains argument of `addTiles` to address both servers.
+
+```{r}
+require(leaflet)
+require(leaflet.extras)
+map <- leaflet() %>%
+  addTiles() %>%
+  enableTileCaching() %>%
+  addTiles(
+    "http://127.0.0.1:400{s}/map/t/{z}/{x}/{y}?level=900&time=2000-04-27 01:00:00&alpha=0.5",
+    options = tileOptions(useCache = TRUE, crossOrigin = TRUE, subdomains = '12')
+  ) %>%
+  setView(zoom = 3, lat = 30, lng = 30)
+```
+
+
+This map looks as follows:
+```{r, eval=FALSE}
+map
+```
+
+
+```{r plot_map_image, echo=FALSE}
+mapview::mapshot(map, file = f <- tempfile(fileext = ".png"), delay = 9, vwidth = 500, vheight = 400)
+magick::image_read(f)
+```
+
+
+Using `lapply` we can close both servers.
+
+```{r}
+lapply(rp_list, function(x)x$read_output())
+lapply(rp_list, function(x)x$finalize())
+
+```
+
+## Using docker
+
+An alternative approach is to use docker (or some similar functionality). This allows you to scale  much broader and is probably an approach that is more suitable for large scale permanent deployments.
+
+### Building a docker image
+
+The first step is to build a docker image that can be used to set up the service. This docker image runs the tileserver. A simple example of a possible `Dockerfile` could look as follows. 
+
+
+```{r, code=readLines(system.file("compose/Dockerfile", package = "starsTileServer")), eval=F}
+```
+
+The following R script is used (`script.R`):
+```{r, code=readLines(system.file("compose/script.R", package = "starsTileServer")), eval=F}
+```
+
+Copies of these files can be found with the following commands:
+```{r}
+system.file("compose/Dockerfile", package = "starsTileServer")
+system.file("compose/script.R", package = "starsTileServer")
+```
+
+### Running multiple instances
+
+With the following `docker-compose.yml` file we can then start the applications: 
+```{bash, code=readLines(system.file("compose/docker-compose.yml", package = "starsTileServer")), eval=F}
+```
+
+In this case 4 parallel instances are started. We use `haproxy` to distribute the load across the containers and `varnish` to cache the tiles that have been rendered before. The caching makes sure no double work is done. 
+
+With the `docker-compose build` command the required docker containers can be build. Using `docker-compose` up the cluster can then be started.
+Now in normal R we can plot a leaflet maps as was done before.
+
+
+```{r, eval=F}
+require(leaflet)
+leaflet() %>%
+  addTiles() %>%
+  fitBounds(0, 30, 20, 40) %>%
+  addTiles(urlTemplate = "http://127.0.0.1:6081/map/nitrogendioxide_total_column/{z}/{x}/{y}?alpha=.4")
+```

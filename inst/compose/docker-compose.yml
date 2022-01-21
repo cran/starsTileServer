@@ -1,0 +1,31 @@
+version: "2.2"
+services:
+  tileserver:
+    build: 
+      dockerfile: Dockerfile
+      context: .
+    scale: 4
+    restart: always
+  lb:
+    container_name: haproxy_tile_loadbalancing
+    image: 'dockercloud/haproxy:latest'
+    environment:
+     - TIMEOUT=connect 4000, client 153000, server 230000
+    links:
+      - tileserver
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  varnish:
+    image: wodby/varnish
+    container_name: varnish_tile_caching
+    ports: 
+     - "80:80"
+     - "6081:6081"
+     - "8080:8080"
+    depends_on:
+    - lb
+    environment:
+      VARNISH_IMPORT_MODULES: cookie,header
+      VARNISH_CONFIG_PRESET: drupal
+      VARNISH_BACKEND_HOST: lb
+      VARNISH_BACKEND_PORT: 80
