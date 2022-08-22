@@ -9,7 +9,7 @@ knitr::opts_chunk$set(
 ## ----download, echo=FALSE-----------------------------------------------------
 if (!file.exists(tmpGridFile <- "~/ownCloudUva/test.nc")) {
   tmpGridFile <- tempfile(fileext = ".nc")
-  download.file("https://surfdrive.surf.nl/files/index.php/s/XndqfCYJqkdjcFO/download", tmpGridFile, extra = "-q", method = "wget")
+  download.file("https://surfdrive.surf.nl/files/index.php/s/Z6YoTyzyyAsmgGS/download", tmpGridFile, extra = "-q", method = "wget")
 }
 
 ## ----asfdf--------------------------------------------------------------------

@@ -5,12 +5,21 @@
 
 <!-- badges: start -->
 
+[![Cran
+version](http://www.r-pkg.org/badges/version/starsTileServer)](https://cran.r-project.org/package=starsTileServer)
+[![Cran
+checks](https://cranchecks.info/badges/worst/starsTileServer)](https://cran.r-project.org/web/checks/check_results_starsTileServer.html)
+[![Cran
+downloads](http://cranlogs.r-pkg.org/badges/starsTileServer)](https://CRAN.R-project.org/package=starsTileServer)
+[![Pipeline
+status](https://gitlab.com/bartk/starsTileServer/badges/master/pipeline.svg)](https://gitlab.com/bartk/starsTileServer/-/pipelines/master/latest)
+[![Coverage](https://gitlab.com/bartk/starsTileServer/badges/master/coverage.svg)](https://gitlab.com/bartk/starsTileServer/-/graphs/master/charts)
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-The goal of starsTiles is to provide a simple way to add large data sets
-in R to a leaflet application. Examples are available on the
+The goal of `starsTileServer` is to provide a simple way to add large
+data sets in R to a leaflet application. Examples are available on the
 [website](https://bartk.gitlab.io/starsTileServer/). Because it is
 possible to provide functions pretty much any data that can be projected
 can be visualized, for example composites or non square grids. This is
@@ -40,17 +49,17 @@ Some example data can be downloaded as follows
 require(ecmwfr)
 request <-
   list(
-    "dataset_short_name"  = "reanalysis-era5-pressure-levels",
-    "product_type"  = "reanalysis",
-    "variable"       = c("temperature", "geopotential", "u_component_of_wind", "v_component_of_wind"),
+    "dataset_short_name" = "reanalysis-era5-pressure-levels",
+    "product_type" = "reanalysis",
+    "variable" = c("temperature", "geopotential", "u_component_of_wind", "v_component_of_wind"),
     "pressure_level" = c("875", "900", "925"),
-    "year"           = "2000",
-    "month"          = "04",
-    "day"            = as.character(27:29),
-    "time"           = sprintf("%02i:00", 0:23),
-    "area"           = "64/-130/-64/144",
-    "format"         = "netcdf",
-    "target"         = "test.nc"
+    "year" = "2000",
+    "month" = "04",
+    "day" = as.character(27:29),
+    "time" = sprintf("%02i:00", 0:23),
+    "area" = "64/-130/-64/144",
+    "format" = "netcdf",
+    "target" = "test.nc"
   )
 # make sure you use your own uid and key ( https://cds.climate.copernicus.eu/#!/home )
 wf_set_key("uid", "key", service = "cds")

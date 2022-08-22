@@ -13,22 +13,22 @@ library(starsTileServer)
 #  require(ecmwfr)
 #  request <-
 #    list(
-#      "dataset_short_name"  = "reanalysis-era5-pressure-levels",
-#      "product_type"  = "reanalysis",
-#      "variable"       = c("temperature", "geopotential", "u_component_of_wind", "v_component_of_wind"),
+#      "dataset_short_name" = "reanalysis-era5-pressure-levels",
+#      "product_type" = "reanalysis",
+#      "variable" = c("temperature", "geopotential", "u_component_of_wind", "v_component_of_wind"),
 #      "pressure_level" = c("875", "900", "925"),
-#      "year"           = "2000",
-#      "month"          = "04",
-#      "day"            = as.character(27:29),
-#      "time"           = sprintf("%02i:00", 0:23),
-#      "area"           = "64/-130/-64/144",
-#      "format"         = "netcdf",
-#      "target"         = "ecmwfData.nc"
+#      "year" = "2000",
+#      "month" = "04",
+#      "day" = as.character(27:29),
+#      "time" = sprintf("%02i:00", 0:23),
+#      "area" = "64/-130/-64/144",
+#      "format" = "netcdf",
+#      "target" = "ecmwfData.nc"
 #    )
 #  # make sure you use your own uid and key ( https://cds.climate.copernicus.eu/#!/home )
-#  wf_set_key("uid", "key", service = "cds")
+#  wf_set_key("uid_to_replace", "key_to_replace", service = "cds")
 #  ncfile <- wf_request(
-#    user = "uid",
+#    user = "uid_to_replace",
 #    request = request,
 #    transfer = TRUE,
 #    path = "~",
@@ -38,7 +38,7 @@ library(starsTileServer)
 ## ---- echo=F------------------------------------------------------------------
 if (!file.exists(tmpGridFile <- "~/ownCloudUva/test.nc")) {
   tmpGridFile <- tempfile(fileext = ".nc")
-  download.file("https://surfdrive.surf.nl/files/index.php/s/XndqfCYJqkdjcFO/download", tmpGridFile, extra = "-q", method = "wget")
+  download.file("https://surfdrive.surf.nl/files/index.php/s/Z6YoTyzyyAsmgGS/download", tmpGridFile, extra = "-q", method = "wget")
 }
 
 ## ----stars--------------------------------------------------------------------

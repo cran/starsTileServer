@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 ```{r download, echo=FALSE}
 if (!file.exists(tmpGridFile <- "~/ownCloudUva/test.nc")) {
   tmpGridFile <- tempfile(fileext = ".nc")
-  download.file("https://surfdrive.surf.nl/files/index.php/s/XndqfCYJqkdjcFO/download", tmpGridFile, extra = "-q", method = "wget")
+  download.file("https://surfdrive.surf.nl/files/index.php/s/Z6YoTyzyyAsmgGS/download", tmpGridFile, extra = "-q", method = "wget")
 }
 ```
 
@@ -28,7 +28,7 @@ In some cases it is desirable to calculate the tiles not from a fixed grid but r
 
 This is a small example calculating wind speed on the fly from weather data on the fly. `starsTileServer` can do this as you can provide functions that calculate the grid on the fly. To do this there needs to be a function that takes a stars grid as the first argument and returns the same grid with values annotated. I have also added a function the determines the coloring of the grid.
 
-In this case the data is extracted form a stars proxy object (this means the function is slower compared to all data being present in memory, but means not all data needs to be loaded. U an V are wind speeds in north south and east west direction. Speed is calculated using Pythagorean theorem. Much more complicated function can be developed but this just gives an idea. This is the function we will use the weather data file we also use in the other vignette. This file can also be downloaded directly from here https://surfdrive.surf.nl/files/index.php/s/XndqfCYJqkdjcFO/download.
+In this case the data is extracted form a stars proxy object (this means the function is slower compared to all data being present in memory, but means not all data needs to be loaded. U an V are wind speeds in north south and east west direction. Speed is calculated using Pythagorean theorem. Much more complicated function can be developed but this just gives an idea. This is the function we will use the weather data file we also use in the other vignette. This file can also be downloaded directly from here https://surfdrive.surf.nl/files/index.php/s/Z6YoTyzyyAsmgGS/download.
 ```{r asfdf}
 windDirFun <- function(grd,
                        level = c("875", "900", "925"),
